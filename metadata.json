@@ -1,0 +1,6 @@
+{
+  "name": "SafeSignal",
+  "description": "Real-time incident reporting platform for high-risk areas. Features fast anonymous reporting and an instant admin dashboard.",
+  "requestFramePermissions": ["geolocation"],
+  "majorCapabilities": ["real-time", "authentication", "reporting"]
+}

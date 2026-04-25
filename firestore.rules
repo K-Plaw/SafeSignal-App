@@ -1,0 +1,100 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 0. Global Safety Net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // --- Helpers ---
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    match /test/connection {
+      allow read: if true;
+    }
+
+    // --- Entity Validations ---
+    function isValidProfile(data) {
+      return data.keys().hasAll(['username', 'email', 'createdAt', 'notificationPreferences']) 
+        && data.username is string && data.username.size() <= 64
+        && data.email is string && data.email.size() <= 256
+        && data.createdAt == request.time
+        && (data.fullname == null || data.fullname is string)
+        && (data.phone == null || data.phone is string)
+        && (data.address == null || data.address is string)
+        && (data.city == null || data.city is string)
+        && (data.state == null || data.state is string);
+    }
+
+    function isValidReport(data) {
+      return data.keys().hasAll(['type', 'description', 'isAnonymous', 'status', 'createdAt', 'updatedAt', 'streetAddress', 'replyCount', 'confirmations', 'inaccurateVotes', 'misuseFlags'])
+        && data.type in ['Armed Robbery', 'Assault', 'Rape', 'Harassment', 'Theft', 'Other']
+        && data.description is string && data.description.size() <= 5000
+        && data.streetAddress is string && data.streetAddress.size() <= 200
+        && data.isAnonymous is bool
+        && data.status in ['New', 'Active', 'Unverified', 'Flagged for misuse']
+        && data.createdAt == request.time
+        && data.updatedAt == request.time
+        && data.replyCount is number
+        && data.confirmations is list
+        && data.inaccurateVotes is list
+        && data.misuseFlags is list
+        && (data.userId == null || data.userId == request.auth.uid);
+    }
+
+    function isValidReply(data) {
+      return data.keys().hasAll(['content', 'username', 'isAnonymous', 'createdAt', 'userId'])
+        && data.keys().size() == 5
+        && data.content is string && data.content.size() <= 1000
+        && data.username is string && data.username.size() <= 64
+        && data.isAnonymous is bool
+        && data.createdAt == request.time
+        && data.userId == request.auth.uid;
+    }
+
+    // --- Collections ---
+
+    match /profiles/{userId} {
+      allow get: if isSignedIn();
+      allow list: if false;
+      allow create: if isOwner(userId) && isValidProfile(request.resource.data);
+      allow update: if isOwner(userId) 
+        && request.resource.data.createdAt == resource.data.createdAt
+        && request.resource.data.email == resource.data.email;
+    }
+
+    match /reports/{reportId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && isValidReport(request.resource.data);
+      
+      allow update: if isSignedIn() 
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['confirmations', 'inaccurateVotes', 'misuseFlags', 'status', 'updatedAt', 'replyCount'])
+        && request.resource.data.updatedAt == request.time;
+
+      match /replies/{replyId} {
+        allow read: if isSignedIn();
+        allow create: if isSignedIn() && isValidReply(request.resource.data);
+        allow update: if isSignedIn() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['misuseFlags', 'isHidden']);
+      }
+    }
+
+    match /report_misuse_flags/{flagId} {
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+    }
+    
+    match /reply_misuse_flags/{flagId} {
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+    }
+  }
+}

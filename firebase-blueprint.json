@@ -1,0 +1,58 @@
+{
+  "entities": {
+    "Report": {
+      "title": "Incident Report",
+      "description": "A report filed by a user about a safety incident.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "type": { "type": "string", "enum": ["Harassment", "Robbery", "Domestic Violence", "Other"] },
+        "description": { "type": "string" },
+        "mediaUrl": { "type": "string", "format": "uri" },
+        "mediaType": { "type": "string", "enum": ["image", "video"] },
+        "isAnonymous": { "type": "boolean" },
+        "status": { "type": "string", "enum": ["New", "Under Review", "Actioned", "Closed"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" },
+        "location": {
+          "type": "object",
+          "properties": {
+            "lat": { "type": "number" },
+            "lng": { "type": "number" }
+          }
+        },
+        "userId": { "type": "string" },
+        "pseudonymousId": { "type": "string" }
+      },
+      "required": ["type", "description", "isAnonymous", "status", "createdAt", "updatedAt"]
+    },
+    "User": {
+      "title": "User Profile",
+      "description": "Information about a registered user or admin.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "fullname": { "type": "string" },
+        "username": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "phone": { "type": "string" },
+        "address": { "type": "string" },
+        "city": { "type": "string" },
+        "state": { "type": "string" },
+        "role": { "type": "string", "enum": ["User", "Admin"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["fullname", "username", "email", "role", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/reports/{reportId}": {
+      "schema": "Report",
+      "description": "Collection of incident reports."
+    },
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "Collection of user profiles."
+    }
+  }
+}
